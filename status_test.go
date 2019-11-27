@@ -11,6 +11,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestStatus_String(t *testing.T) {
+	assert.Equal(t, "pass", StatusPass.String())
+	assert.Equal(t, "warn", StatusWarn.String())
+	assert.Equal(t, "fail", StatusFail.String())
+}
+
 func TestWorstStatus(t *testing.T) {
 	assert.Equal(t, StatusPass, WorstStatus(StatusPass))
 	assert.Equal(t, StatusWarn, WorstStatus(StatusWarn))
