@@ -31,7 +31,7 @@ type Config struct {
 	// The hostname. Defaults to 127.0.0.1.
 	Host string
 
-	// The port number. Defaults to 9,999.
+	// The port number. Defaults to 9999.
 	Port int
 
 	// HTTP timeout. Defaults to 30 seconds.
