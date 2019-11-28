@@ -16,19 +16,23 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/client"
+	docker "github.com/docker/docker/client"
+	"github.com/logrusorgru/aurora"
 	"github.com/tidwall/pretty"
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/dotse/go-health"
+	"github.com/dotse/go-health/client"
 )
 
 const (
 	errorKey = "error"
+	interval = 2 * time.Second
 )
 
+//nolint: maligned
 type cmd struct {
-	config     health.CheckHealthConfig
+	config     client.Config
 	continuous bool
 	interval   time.Duration
 	isatty     bool
@@ -59,7 +63,7 @@ func newCmd() cmd {
 	// Setting interval implies continuous
 	c.continuous = c.continuous || c.interval != 0
 	if c.continuous && c.interval == 0 {
-		c.interval = 2 * time.Second
+		c.interval = interval
 	}
 
 	var host string
@@ -73,7 +77,7 @@ func newCmd() cmd {
 		host = flag.Arg(0)
 	}
 
-	c.config = health.CheckHealthConfig{
+	c.config = client.Config{
 		Port:    port,
 		Host:    host,
 		Timeout: timeout,
@@ -90,12 +94,12 @@ func (c *cmd) exit() {
 		var str []string
 
 		for status, count := range c.stats {
-			str = append(str, fmt.Sprintf("\033[%dm%d %s\033[0m", map[string]int{
-				health.StatusPass.String(): 32,
-				health.StatusWarn.String(): 33,
-				health.StatusFail.String(): 31,
-				errorKey:                   91,
-			}[status], count, status))
+			str = append(str, map[string]func(interface{}) aurora.Value{
+				health.StatusPass.String(): aurora.Green,
+				health.StatusWarn.String(): aurora.Yellow,
+				health.StatusFail.String(): aurora.Red,
+				errorKey:                   aurora.BrightRed,
+			}[status](fmt.Sprintf("%d %s", count, status)).String())
 		}
 
 		fmt.Printf("\n---\n%s\n", strings.Join(str, ", "))
@@ -107,7 +111,7 @@ func (c *cmd) exit() {
 		}
 
 		if count > 0 {
-			os.Exit(1)
+			os.Exit(client.ErrExit)
 		}
 	}
 
@@ -146,7 +150,7 @@ func (c *cmd) run() {
 	go c.wait()
 
 	for !c.stop {
-		resp, err := health.CheckHealth(c.config)
+		resp, err := client.CheckHealth(c.config)
 		if err == nil {
 			c.stats[resp.Status.String()]++
 			c.print(resp)
@@ -176,7 +180,7 @@ func (c *cmd) wait() {
 }
 
 func getContainerAddress(container string) (string, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv)
+	cli, err := docker.NewClientWithOpts(docker.FromEnv)
 	if err != nil {
 		return "", err
 	}

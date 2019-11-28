@@ -22,10 +22,10 @@ func (*MyTypeWithHealthCheck) CheckHealth() []Check {
 func Example() {
 	// Register an instance of some type that implements HealthChecker:
 	m := new(MyTypeWithHealthCheck)
-	Register(true, "mytype", m)
+	Register("mytype", m)
 
 	// Register a function:
-	RegisterFunc(true, "func", func() (checks []Check) {
+	RegisterFunc("func", func() (checks []Check) {
 		// Checkers can return any number of checks.
 		for i := 0; i < 3; i++ {
 			var check Check
@@ -35,6 +35,30 @@ func Example() {
 		}
 		return
 	})
+}
+
+func TestInsertUnique(t *testing.T) {
+	m := make(map[string]Checker)
+
+	unique := insertUnique(m, "foo", nil)
+	assert.Equal(t, "foo", unique)
+	assert.Equal(t, 1, len(m))
+
+	unique = insertUnique(m, "foo", nil)
+	assert.Equal(t, "foo-1", unique)
+	assert.Equal(t, 2, len(m))
+
+	unique = insertUnique(m, "foo", nil)
+	assert.Equal(t, "foo-2", unique)
+	assert.Equal(t, 3, len(m))
+
+	unique = insertUnique(m, "bar", nil)
+	assert.Equal(t, "bar", unique)
+	assert.Equal(t, 4, len(m))
+
+	unique = insertUnique(m, "foo", nil)
+	assert.Equal(t, "foo-3", unique)
+	assert.Equal(t, 5, len(m))
 }
 
 func TestReadResponse(t *testing.T) {

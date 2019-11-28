@@ -7,11 +7,7 @@ package health
 
 import (
 	"fmt"
-	"net"
-	"net/http"
-	"os"
-	"strconv"
-	"time"
+	"sync"
 )
 
 const (
@@ -21,74 +17,13 @@ const (
 	ComponentTypeDatastore = "datastore"
 	// ComponentTypeSystem is "system".
 	ComponentTypeSystem = "system"
-
-	port    = 9999
-	timeout = 30 * time.Second
 )
 
-// CheckHealthConfig contains configuration for the CheckHealth() function.
-type CheckHealthConfig struct {
-	// The hostname. Defaults to 127.0.0.1.
-	Host string
-
-	// The port number. Defaults to 9,999.
-	Port int
-
-	// HTTP timeout. Defaults to 30 seconds.
-	Timeout time.Duration
-}
-
-// CheckHealth gets a Response from an HTTP server.
-func CheckHealth(config CheckHealthConfig) (*Response, error) {
-	if config.Host == "" {
-		config.Host = "127.0.0.1"
-	}
-
-	if config.Port == 0 {
-		config.Port = port
-	}
-
-	if config.Timeout == 0 {
-		config.Timeout = timeout
-	}
-
-	var (
-		client = http.Client{
-			Timeout: config.Timeout,
-		}
-		httpResp, err = client.Get(fmt.Sprintf("http://%s/", net.JoinHostPort(config.Host, strconv.Itoa(config.Port))))
-	)
-
-	if err != nil {
-		return nil, err
-	}
-	defer httpResp.Body.Close() // nolint: errcheck
-
-	resp, err := ReadResponse(httpResp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	return resp, nil
-}
-
-// CheckHealthCommand is a utility for services that exits the current process
-// with 0 or 1 for a healthy or unhealthy state, respectively.
-func CheckHealthCommand() {
-	resp, err := CheckHealth(CheckHealthConfig{})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v", err)
-		os.Exit(1)
-	}
-
-	_, _ = resp.Write(os.Stdout)
-
-	if resp.Good() {
-		os.Exit(0)
-	}
-
-	os.Exit(1)
-}
+//nolint: gochecknoglobals
+var (
+	checkers    map[string]Checker
+	checkersMtx sync.RWMutex
+)
 
 // Checker can be implemented by anything whose health can be checked.
 type Checker interface {
@@ -102,35 +37,42 @@ type Registered string
 
 // Deregister removes a previously registered health checker.
 func (r Registered) Deregister() {
-	s := getServer()
+	checkersMtx.Lock()
+	defer checkersMtx.Unlock()
 
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-
-	delete(s.checkers, string(r))
+	delete(checkers, string(r))
 }
 
-// Register registers a health checker. Can also make sure the server is
-// started.
-func Register(startServer bool, name string, checker Checker) Registered {
-	if startServer {
-		StartServer()
+// CheckHealth returns the current (local) health status accumulated from all
+// registered health checkers.
+func CheckHealth() (resp Response) {
+	checkersMtx.RLock()
+	defer checkersMtx.RUnlock()
+
+	for name, checker := range checkers {
+		resp.AddChecks(name, getChecks(checker)...)
 	}
 
-	s := getServer()
+	return
+}
 
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
+// Register registers a health checker.
+func Register(name string, checker Checker) Registered {
+	checkersMtx.Lock()
+	defer checkersMtx.Unlock()
 
-	name = insertUnique(s.checkers, name, checker)
+	if checkers == nil {
+		checkers = make(map[string]Checker)
+	}
+
+	name = insertUnique(checkers, name, checker)
 
 	return Registered(name)
 }
 
-// RegisterFunc registers a health check function. Can also make sure the server
-// is started.
-func RegisterFunc(startServer bool, name string, f func() []Check) Registered {
-	return Register(startServer, name, &checkFuncWrapper{
+// RegisterFunc registers a health check function.
+func RegisterFunc(name string, f func() []Check) Registered {
+	return Register(name, &checkFuncWrapper{
 		Func: f,
 	})
 }
@@ -141,4 +83,42 @@ type checkFuncWrapper struct {
 
 func (wrapper *checkFuncWrapper) CheckHealth() []Check {
 	return wrapper.Func()
+}
+
+func getChecks(checker Checker) (checks []Check) {
+	defer func() {
+		if r := recover(); r != nil {
+			checks = []Check{
+				{
+					Status: StatusFail,
+					Output: fmt.Sprintf("%v", r),
+				},
+			}
+		}
+	}()
+
+	checks = checker.CheckHealth()
+
+	return
+}
+
+func insertUnique(m map[string]Checker, name string, checker Checker) string {
+	var (
+		inc    uint64
+		unique = name
+	)
+
+	for {
+		if _, ok := m[unique]; !ok {
+			break
+		}
+
+		inc++
+
+		unique = fmt.Sprintf("%s-%d", name, inc)
+	}
+
+	m[unique] = checker
+
+	return unique
 }

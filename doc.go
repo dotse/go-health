@@ -16,7 +16,7 @@ http://0.0.0.0:9999.
 For services there is `HealthCheckCommand()` to put (early) in `main()`, e.g:
 
     if len(os.Args) >= 2 && os.Args[1] == "healthcheck" {
-        health.CheckHealthCommand()
+        client.CheckHealthCommand()
     }
 
 Docker images can then use the following:

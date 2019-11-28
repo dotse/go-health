@@ -2,14 +2,12 @@
 
 [![License](https://img.shields.io/github/license/dotse/go-health)](https://opensource.org/licenses/MIT)
 [![GoDoc](https://img.shields.io/badge/-Documentation-green?logo=go)](https://godoc.org/github.com/dotse/go-health)
-[![Actions](https://github.com/dotse/go-health/workflows/Build/badge.svg?branch=master)](https://github.com/dotse/go-health/actions)
 [![Releases](https://img.shields.io/github/v/release/dotse/go-health?sort=semver)](https://github.com/dotse/go-health/releases)
 [![Issues](https://img.shields.io/github/issues/dotse/go-health)](https://github.com/dotse/go-health/issues)
 
 `go-health` is a Go library for easily setting up monitoring of anything within
 an application. Anything that can have a health status can be registered, and
-then, as if by magic 🧙, an HTTP server is running and serving a combined health
-status.
+then an HTTP server can be started to serve a combined health status.
 
 It follows the proposed standard [_Health Check Response Format for HTTP APIs_]
 (but you don’t even have to know that, `go-health` takes care of that for you).
@@ -51,6 +49,7 @@ Then whenever you create your application register it as a health check:
 ```go
 app := NewMyApplication()
 health.Register(true, "my-application", app)
+server.Start()
 ```
 
 Either like the above, e.g. in `main()`, or the application could even register
@@ -67,7 +66,7 @@ To then check the health, GET the response and look at its `status` field.
 `go-health` has a function for this too:
 
 ```go
-resp, err := health.CheckHealth(c.config)
+resp, err := client.CheckHealth(c.config)
 if err == nil {
     fmt.Printf("Status: %s\n", resp.Status)
 } else {
@@ -84,7 +83,7 @@ invoked with the first argument `healthcheck`:
 ```go
 func main() {
     if os.Args[1] == "healthcheck" {
-        health.CheckHealthCommand()
+        client.CheckHealthCommand()
     }
 
     // Your other code...

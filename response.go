@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"net/url"
 )
 
 // Response represents a health check response, containing any number of Checks.
@@ -20,7 +19,7 @@ type Response struct {
 	Notes       []string           `json:"notes,omitempty"`
 	Output      string             `json:"output,omitempty"`
 	Checks      map[string][]Check `json:"checks,omitempty"`
-	Links       []url.URL          `json:"links,omitempty"`
+	Links       []string           `json:"links,omitempty"`
 	ServiceID   string             `json:"serviceID,omitempty"`
 	Description string             `json:"description,omitempty"`
 }

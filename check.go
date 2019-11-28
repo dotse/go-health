@@ -6,7 +6,6 @@
 package health
 
 import (
-	"net/url"
 	"time"
 )
 
@@ -17,10 +16,16 @@ type Check struct {
 	ObservedValue     interface{} `json:"observedValue,omitempty"`
 	ObservedUnit      string      `json:"observedUnit,omitempty"`
 	Status            Status      `json:"status"`
-	AffectedEndpoints []url.URL   `json:"affectedEndpoints,omitempty"`
-	Time              time.Time   `json:"time,omitempty"`
+	AffectedEndpoints []string    `json:"affectedEndpoints,omitempty"`
+	Time              *time.Time  `json:"time,omitempty"`
 	Output            string      `json:"output,omitempty"`
-	Links             []url.URL   `json:"links,omitempty"`
+	Links             []string    `json:"links,omitempty"`
+}
+
+// Good returns true if the Check is good, i.e. its status is ‘pass’ or
+// ‘warn’.
+func (check *Check) Good() bool {
+	return check.Status == StatusPass || check.Status == StatusWarn
 }
 
 // SetObservedTime sets the observedValue field to a time duration (and the
