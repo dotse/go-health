@@ -1,4 +1,4 @@
-// Copyright © 2019 The Swedish Internet Foundation
+// Copyright © 2019, 2022 The Swedish Internet Foundation
 //
 // Distributed under the MIT License. (See accompanying LICENSE file or copy at
 // <https://opensource.org/licenses/MIT>.)
@@ -6,6 +6,7 @@
 package health
 
 import (
+	"context"
 	"fmt"
 	"sync"
 )
@@ -46,11 +47,24 @@ func (r Registered) Deregister() {
 // CheckHealth returns the current (local) health status accumulated from all
 // registered health checkers.
 func CheckHealth() (resp Response) {
+	resp, _ = CheckHealthContext(context.Background())
+	return
+}
+
+// CheckHealthContext returns the current (local) health status accumulated from
+// all registered health checkers.
+func CheckHealthContext(ctx context.Context) (resp Response, err error) {
 	checkersMtx.RLock()
 	defer checkersMtx.RUnlock()
 
 	for name, checker := range checkers {
-		resp.AddChecks(name, getChecks(checker)...)
+		select {
+		case <-ctx.Done():
+			err = ctx.Err()
+			return
+		default:
+			resp.AddChecks(name, getChecks(checker)...)
+		}
 	}
 
 	return

@@ -1,4 +1,4 @@
-// Copyright © 2019 The Swedish Internet Foundation
+// Copyright © 2019, 2022 The Swedish Internet Foundation
 //
 // Distributed under the MIT License. (See accompanying LICENSE file or copy at
 // <https://opensource.org/licenses/MIT>.)
@@ -14,12 +14,13 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	docker "github.com/docker/docker/client"
 	"github.com/logrusorgru/aurora"
 	"github.com/tidwall/pretty"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 
 	"github.com/dotse/go-health"
 	"github.com/dotse/go-health/client"
@@ -83,7 +84,7 @@ func newCmd() cmd {
 		Timeout: timeout,
 	}
 
-	c.isatty = terminal.IsTerminal(int(os.Stdout.Fd()))
+	c.isatty = term.IsTerminal(int(os.Stdout.Fd()))
 	c.print = c.makePrint()
 
 	return c
@@ -144,13 +145,13 @@ func (c *cmd) makePrint() func(*health.Response) {
 	}
 }
 
-func (c *cmd) run() {
+func (c *cmd) run(ctx context.Context) {
 	c.stats = make(map[string]uint64)
 
 	go c.wait()
 
 	for !c.stop {
-		resp, err := client.CheckHealth(c.config)
+		resp, err := client.CheckHealthContext(ctx, c.config)
 		if err == nil {
 			c.stats[resp.Status.String()]++
 			c.print(resp)
@@ -200,6 +201,13 @@ func getContainerAddress(container string) (string, error) {
 }
 
 func main() {
+	ctx, stop := signal.NotifyContext(
+		context.Background(),
+		os.Interrupt,
+		syscall.SIGTERM,
+	)
+	defer stop()
+
 	c := newCmd()
-	c.run()
+	c.run(ctx)
 }

@@ -1,4 +1,4 @@
-// Copyright © 2019 The Swedish Internet Foundation
+// Copyright © 2019, 2022 The Swedish Internet Foundation
 //
 // Distributed under the MIT License. (See accompanying LICENSE file or copy at
 // <https://opensource.org/licenses/MIT>.)
@@ -103,7 +103,10 @@ func Handle(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	resp := health.CheckHealth()
+	resp, err := health.CheckHealthContext(req.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 
 	if _, err := resp.Write(w); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

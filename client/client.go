@@ -1,4 +1,4 @@
-// Copyright © 2019 The Swedish Internet Foundation
+// Copyright © 2019, 2022 The Swedish Internet Foundation
 //
 // Distributed under the MIT License. (See accompanying LICENSE file or copy at
 // <https://opensource.org/licenses/MIT>.)
@@ -6,6 +6,7 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -40,6 +41,11 @@ type Config struct {
 
 // CheckHealth gets a Response from an HTTP server.
 func CheckHealth(config Config) (*health.Response, error) {
+	return CheckHealthContext(context.Background(), config)
+}
+
+// CheckHealthContext gets a Response from an HTTP server.
+func CheckHealthContext(ctx context.Context, config Config) (*health.Response, error) {
 	if config.Host == "" {
 		config.Host = "127.0.0.1"
 	}
@@ -59,7 +65,7 @@ func CheckHealth(config Config) (*health.Response, error) {
 		}
 	)
 
-	req, err := http.NewRequest(http.MethodGet, addr, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, addr, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
@@ -84,7 +90,13 @@ func CheckHealth(config Config) (*health.Response, error) {
 // CheckHealthCommand is a utility for services that exits the current process
 // with 0 or 1 for a healthy or unhealthy state, respectively.
 func CheckHealthCommand() {
-	resp, err := CheckHealth(Config{})
+	CheckHealthCommandContext(context.Background())
+}
+
+// CheckHealthCommandContext is a utility for services that exits the current
+// process with 0 or 1 for a healthy or unhealthy state, respectively.
+func CheckHealthCommandContext(ctx context.Context) {
+	resp, err := CheckHealthContext(ctx, Config{})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v", err)
 		os.Exit(ErrExit)
