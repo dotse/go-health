@@ -77,7 +77,7 @@ func CheckHealthContext(ctx context.Context, config Config) (*health.Response, e
 		return nil, fmt.Errorf("failed to send HTTP request: %w", err)
 	}
 
-	defer httpResp.Body.Close() // nolint: errcheck
+	defer httpResp.Body.Close() //nolint:errcheck
 
 	resp, err := health.ReadResponse(httpResp.Body)
 	if err != nil {

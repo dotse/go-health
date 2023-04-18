@@ -1,4 +1,4 @@
-// Copyright © 2019, 2022 The Swedish Internet Foundation
+// Copyright © 2019, 2022, 2023 The Swedish Internet Foundation
 //
 // Distributed under the MIT License. (See accompanying LICENSE file or copy at
 // <https://opensource.org/licenses/MIT>.)
@@ -31,7 +31,7 @@ const (
 	interval = 2 * time.Second
 )
 
-//nolint: maligned
+//nolint:maligned
 type cmd struct {
 	config     client.Config
 	continuous bool
@@ -54,7 +54,12 @@ func newCmd() cmd {
 
 	flag.BoolVar(&c.continuous, "c", false, "Run continuously (stop with Ctrl+C).")
 	flag.BoolVar(&docker, "d", false, "Address is the name of a Docker container.")
-	flag.DurationVar(&c.interval, "n", 0, "Interval between continuous checks (implies -c) (default: 2s).")
+	flag.DurationVar(
+		&c.interval,
+		"n",
+		0,
+		"Interval between continuous checks (implies -c) (default: 2s).",
+	)
 	flag.IntVar(&port, "p", 0, "Port.")
 	flag.BoolVar(&c.short, "s", false, "Short output (just the status).")
 	flag.DurationVar(&timeout, "t", 0, "HTTP timeout.")

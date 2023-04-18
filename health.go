@@ -1,4 +1,4 @@
-// Copyright © 2019, 2022 The Swedish Internet Foundation
+// Copyright © 2019, 2022, 2023 The Swedish Internet Foundation
 //
 // Distributed under the MIT License. (See accompanying LICENSE file or copy at
 // <https://opensource.org/licenses/MIT>.)
@@ -20,7 +20,7 @@ const (
 	ComponentTypeSystem = "system"
 )
 
-//nolint: gochecknoglobals
+//nolint:gochecknoglobals
 var (
 	checkers    map[string]Checker
 	checkersMtx sync.RWMutex
