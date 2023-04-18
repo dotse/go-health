@@ -1,4 +1,4 @@
-// Copyright © 2019, 2022 The Swedish Internet Foundation
+// Copyright © 2019, 2022, 2023 The Swedish Internet Foundation
 //
 // Distributed under the MIT License. (See accompanying LICENSE file or copy at
 // <https://opensource.org/licenses/MIT>.)
@@ -8,7 +8,7 @@ package server
 import (
 	"net"
 	"net/http"
-	"strconv"
+	"net/netip"
 	"strings"
 	"sync"
 
@@ -26,7 +26,7 @@ const (
 	Port = 9_999
 )
 
-// nolint: gochecknoglobals
+//nolint:gochecknoglobals
 var (
 	httpServer *http.Server
 	initMtx    sync.Mutex
@@ -41,15 +41,14 @@ func Start() error {
 	defer initMtx.Unlock()
 
 	if httpServer == nil {
-		addr := net.JoinHostPort("0.0.0.0", strconv.Itoa(Port))
-
-		listener, err := net.Listen("tcp", addr)
+		addr := netip.AddrPortFrom(netip.IPv4Unspecified(), Port)
+		listener, err := net.Listen("tcp", addr.String())
 		if err != nil {
 			return err
 		}
 
 		httpServer = &http.Server{
-			Addr:    addr,
+			Addr:    addr.String(),
 			Handler: http.HandlerFunc(Handle),
 		}
 

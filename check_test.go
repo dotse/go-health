@@ -1,4 +1,4 @@
-// Copyright © 2019 The Swedish Internet Foundation
+// Copyright © 2019, 2023 The Swedish Internet Foundation
 //
 // Distributed under the MIT License. (See accompanying LICENSE file or copy at
 // <https://opensource.org/licenses/MIT>.)
@@ -14,6 +14,8 @@ import (
 )
 
 func TestCheck(t *testing.T) {
+	t.Parallel()
+
 	var check Check
 
 	assert.True(t, check.Good())

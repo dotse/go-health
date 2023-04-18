@@ -1,4 +1,4 @@
-// Copyright © 2019 The Swedish Internet Foundation
+// Copyright © 2019, 2023 The Swedish Internet Foundation
 //
 // Distributed under the MIT License. (See accompanying LICENSE file or copy at
 // <https://opensource.org/licenses/MIT>.)
@@ -38,6 +38,8 @@ func Example() {
 }
 
 func TestInsertUnique(t *testing.T) {
+	t.Parallel()
+
 	m := make(map[string]Checker)
 
 	unique := insertUnique(m, "foo", nil)
@@ -62,6 +64,8 @@ func TestInsertUnique(t *testing.T) {
 }
 
 func TestReadResponse(t *testing.T) {
+	t.Parallel()
+
 	r := strings.NewReader(`{ "status": "pass" }`)
 
 	resp, err := ReadResponse(r)
@@ -72,6 +76,8 @@ func TestReadResponse(t *testing.T) {
 }
 
 func TestResponse_Write(t *testing.T) {
+	t.Parallel()
+
 	var (
 		b    strings.Builder
 		resp Response

@@ -1,4 +1,4 @@
-// Copyright © 2019 The Swedish Internet Foundation
+// Copyright © 2019, 2023 The Swedish Internet Foundation
 //
 // Distributed under the MIT License. (See accompanying LICENSE file or copy at
 // <https://opensource.org/licenses/MIT>.)
@@ -14,7 +14,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestHandle(t *testing.T) { // nolint: funlen
+func TestHandle(t *testing.T) { //nolint:funlen
+	t.Parallel()
+
 	for _, c := range [...]struct {
 		Name            string
 		Method          string
@@ -89,24 +91,27 @@ func TestHandle(t *testing.T) { // nolint: funlen
 			},
 		},
 	} {
-		if c.Method == "" {
-			c.Method = http.MethodGet
-		}
+		c := c
 
-		if c.ExpectedHeaders == nil {
-			c.ExpectedHeaders = make(map[string]string)
-		}
-
-		if _, ok := c.ExpectedHeaders[headers.ContentType]; !ok {
-			c.ExpectedHeaders[headers.ContentType] = ContentType
-		}
-
-		if c.ExpectedStatus == 0 {
-			c.ExpectedStatus = http.StatusOK
-		}
-
-		//nolint: scopelint
 		t.Run(c.Name, func(t *testing.T) {
+			t.Parallel()
+
+			if c.Method == "" {
+				c.Method = http.MethodGet
+			}
+
+			if c.ExpectedHeaders == nil {
+				c.ExpectedHeaders = make(map[string]string)
+			}
+
+			if _, ok := c.ExpectedHeaders[headers.ContentType]; !ok {
+				c.ExpectedHeaders[headers.ContentType] = ContentType
+			}
+
+			if c.ExpectedStatus == 0 {
+				c.ExpectedStatus = http.StatusOK
+			}
+
 			req := httptest.NewRequest(c.Method, "/", nil)
 
 			for k, v := range c.Headers {
@@ -116,7 +121,7 @@ func TestHandle(t *testing.T) { // nolint: funlen
 			w := httptest.NewRecorder()
 			Handle(w, req)
 			resp := w.Result()
-			defer resp.Body.Close() //nolint: errcheck
+			defer resp.Body.Close() //nolint:errcheck
 
 			assert.Equal(t, c.ExpectedStatus, resp.StatusCode, "correct status code")
 
