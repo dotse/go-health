@@ -3,7 +3,7 @@ module github.com/dotse/go-health
 go 1.21
 
 require (
-	github.com/docker/docker v24.0.6+incompatible
+	github.com/docker/docker v24.0.7+incompatible
 	github.com/go-http-utils/headers v0.0.0-20181008091004-fed159eddc2a
 	github.com/go-http-utils/negotiator v1.0.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible
