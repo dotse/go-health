@@ -1,9 +1,4 @@
-// Copyright © 2019, 2023 The Swedish Internet Foundation
-//
-// Distributed under the MIT License. (See accompanying LICENSE file or copy at
-// <https://opensource.org/licenses/MIT>.)
-
-package health
+package health_test
 
 import (
 	"encoding/json"
@@ -11,17 +6,19 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/dotse/go-health"
 )
 
 func TestCheck(t *testing.T) {
 	t.Parallel()
 
-	var check Check
+	var check health.Check
 
 	assert.True(t, check.Good())
-	check.Status = StatusWarn
+	check.Status = health.StatusWarn
 	assert.True(t, check.Good())
-	check.Status = StatusFail
+	check.Status = health.StatusFail
 	assert.False(t, check.Good())
 
 	check.SetObservedTime(123*time.Microsecond + 456*time.Nanosecond)
