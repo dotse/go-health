@@ -1,8 +1,3 @@
-// Copyright © 2019 The Swedish Internet Foundation
-//
-// Distributed under the MIT License. (See accompanying LICENSE file or copy at
-// <https://opensource.org/licenses/MIT>.)
-
 package health
 
 import (

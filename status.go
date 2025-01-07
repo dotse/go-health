@@ -1,8 +1,3 @@
-// Copyright © 2019 The Swedish Internet Foundation
-//
-// Distributed under the MIT License. (See accompanying LICENSE file or copy at
-// <https://opensource.org/licenses/MIT>.)
-
 package health
 
 import (
@@ -10,28 +5,34 @@ import (
 )
 
 const (
-	// StatusPass is "pass".
+	// StatusPass is ‘pass’.
 	StatusPass Status = iota
-	// StatusWarn is "warn".
+	// StatusWarn is ‘warn’.
 	StatusWarn Status = iota
-	// StatusFail is "fail".
+	// StatusFail is ‘fail’.
 	StatusFail Status = iota
 )
+
+func statusStringMap() map[Status]string {
+	return map[Status]string{
+		StatusPass: "pass",
+		StatusFail: "fail",
+		StatusWarn: "warn",
+	}
+}
 
 // Status is the status part of a Response or Check.
 type Status uint8
 
-// WorstStatus returns the worst of a number of statuses, where "warn" is worse
-// than "pass" but "fail" is worse than "warn".
+// WorstStatus returns the worst of a number of statuses, where ‘warn’ is worse
+// than ‘pass’ but ‘fail’ is worse than ‘warn’.
 func WorstStatus(status Status, statuses ...Status) (worst Status) {
 	worst = status
 	for _, other := range statuses {
-		if other > worst {
-			worst = other
-		}
+		worst = max(worst, other)
 	}
 
-	return
+	return worst
 }
 
 // MarshalJSON encodes a status as a JSON string.
@@ -65,13 +66,5 @@ func (status *Status) UnmarshalJSON(data []byte) error {
 
 	return &json.UnsupportedValueError{
 		Str: tmp,
-	}
-}
-
-func statusStringMap() map[Status]string {
-	return map[Status]string{
-		StatusPass: "pass",
-		StatusFail: "fail",
-		StatusWarn: "warn",
 	}
 }

@@ -1,36 +1,65 @@
-// Copyright © 2019, 2023 The Swedish Internet Foundation
-//
-// Distributed under the MIT License. (See accompanying LICENSE file or copy at
-// <https://opensource.org/licenses/MIT>.)
-
-package health
+package health_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/dotse/go-health"
 )
 
 func TestStatus_String(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, "pass", StatusPass.String())
-	assert.Equal(t, "warn", StatusWarn.String())
-	assert.Equal(t, "fail", StatusFail.String())
+	assert.Equal(t, "pass", health.StatusPass.String())
+	assert.Equal(t, "warn", health.StatusWarn.String())
+	assert.Equal(t, "fail", health.StatusFail.String())
 }
 
 func TestWorstStatus(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, StatusPass, WorstStatus(StatusPass))
-	assert.Equal(t, StatusWarn, WorstStatus(StatusWarn))
-	assert.Equal(t, StatusFail, WorstStatus(StatusFail))
+	assert.Equal(t, health.StatusPass, health.WorstStatus(health.StatusPass))
+	assert.Equal(t, health.StatusWarn, health.WorstStatus(health.StatusWarn))
+	assert.Equal(t, health.StatusFail, health.WorstStatus(health.StatusFail))
 
-	assert.Equal(t, StatusWarn, WorstStatus(StatusPass, StatusWarn))
-	assert.Equal(t, StatusFail, WorstStatus(StatusWarn, StatusFail))
-	assert.Equal(t, StatusFail, WorstStatus(StatusPass, StatusFail))
+	assert.Equal(
+		t,
+		health.StatusWarn,
+		health.WorstStatus(health.StatusPass, health.StatusWarn),
+	)
 
-	assert.Equal(t, StatusWarn, WorstStatus(StatusWarn, StatusWarn))
-	assert.Equal(t, StatusFail, WorstStatus(StatusFail, StatusWarn))
-	assert.Equal(t, StatusFail, WorstStatus(StatusPass, StatusFail, StatusPass))
+	assert.Equal(
+		t,
+		health.StatusFail,
+		health.WorstStatus(health.StatusWarn, health.StatusFail),
+	)
+
+	assert.Equal(
+		t,
+		health.StatusFail,
+		health.WorstStatus(health.StatusPass, health.StatusFail),
+	)
+
+	assert.Equal(
+		t,
+		health.StatusWarn,
+		health.WorstStatus(health.StatusWarn, health.StatusWarn),
+	)
+
+	assert.Equal(
+		t,
+		health.StatusFail,
+		health.WorstStatus(health.StatusFail, health.StatusWarn),
+	)
+
+	assert.Equal(
+		t,
+		health.StatusFail,
+		health.WorstStatus(
+			health.StatusPass,
+			health.StatusFail,
+			health.StatusPass,
+		),
+	)
 }

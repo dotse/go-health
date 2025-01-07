@@ -1,0 +1,67 @@
+NAME
+       healthcheck — A command line health check tool for go-health.
+
+SYNOPSIS
+       healthcheck [OPTION]... [ADDRESS]
+       healthcheck -h
+       healthcheck -V
+
+DESCRIPTION
+       healthcheck sends HTTP requests to ADDRESS and parses the result as a
+       health check report.
+
+OPTIONS
+       -c, --continuous
+              Run continuously (stop with Ctrl+C).
+
+       -d, --docker
+              ADDRESS is the name of a Docker container.
+
+       -h, --help
+              Print help text and exit.
+
+       -n DURATION, --interval DURATION
+              Interval between continuous checks (implies -c) (default: 2s).
+
+       -p NUMBER, --port NUMBER
+              The port number. Defaults to 9999. Overrides HEALTH_PORT.
+
+       -q, --quiet
+              Log less. Can be repeated.
+
+       -s, --short
+              Short output (just the status).
+
+       -t DURATION, --timeout DURATION
+              HTTP timeout.
+
+       -v, --verbose
+              Log more. Can be repeated.
+
+       -V, --version
+              Print version info and exit.
+
+OPERANDS
+       ADDRESS
+              The address to query for health check status. Default is
+              ‘localhost’.
+
+              Should be Docker container name if -d is used.
+
+ENVIRONMENT VARIABLES
+       HEALTH_PORT
+              The port number. Defaults to 9999. Can be overridden with -p.
+
+EXIT STATUS
+       0      Everything went well.
+
+       1      Something went wrong.
+
+       2      User error, e.g. bad options.
+
+SEE ALSO
+       go-health
+              <https://github.com/dotse/go-health>
+
+       Health Check Response Format for HTTP APIs
+              <https://inadarei.github.io/rfc-healthcheck/>

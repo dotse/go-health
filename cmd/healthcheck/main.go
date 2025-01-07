@@ -1,188 +1,185 @@
-// Copyright © 2019, 2022, 2023 The Swedish Internet Foundation
-//
-// Distributed under the MIT License. (See accompanying LICENSE file or copy at
-// <https://opensource.org/licenses/MIT>.)
-
 package main
 
 import (
 	"bytes"
 	"context"
-	"flag"
+	_ "embed"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"strings"
 	"syscall"
 	"time"
 
 	docker "github.com/docker/docker/client"
+	"github.com/dotse/slug"
 	"github.com/logrusorgru/aurora"
 	"github.com/tidwall/pretty"
+	"gitlab.com/biffen/go-applause"
 	"golang.org/x/term"
 
 	"github.com/dotse/go-health"
-	"github.com/dotse/go-health/client"
 )
 
 const (
-	errorKey = "error"
-	interval = 2 * time.Second
+	errorKey        = "error"
+	defaultInterval = 2 * time.Second
+	name            = "healthcheck"
 )
 
-//nolint:maligned
-type cmd struct {
-	config     client.Config
-	continuous bool
-	interval   time.Duration
-	isatty     bool
-	print      func(*health.Response)
-	short      bool
-	stats      map[string]uint64
-	stop       bool
-}
+//go:embed usage.txt
+var usage []byte
 
-func newCmd() cmd {
-	c := cmd{}
-
+func Main(ctx context.Context) int {
 	var (
-		docker  bool
-		port    int
-		timeout time.Duration
+		c        cmd
+		help     bool
+		isDocker bool
+		level    = slog.LevelInfo
+		parser   applause.Parser
+		port     uint16
+		timeout  time.Duration
+		version  bool
 	)
 
-	flag.BoolVar(&c.continuous, "c", false, "Run continuously (stop with Ctrl+C).")
-	flag.BoolVar(&docker, "d", false, "Address is the name of a Docker container.")
-	flag.DurationVar(
-		&c.interval,
-		"n",
-		0,
-		"Interval between continuous checks (implies -c) (default: 2s).",
-	)
-	flag.IntVar(&port, "p", 0, "Port.")
-	flag.BoolVar(&c.short, "s", false, "Short output (just the status).")
-	flag.DurationVar(&timeout, "t", 0, "HTTP timeout.")
+	parser.Add(
+		applause.Option{
+			Names:  []string{"V", "version"},
+			Target: &version,
+		},
 
-	flag.Parse()
+		applause.Option{
+			Names:  []string{"c", "continuous"},
+			Target: &c.continuous,
+		},
+
+		applause.Option{
+			Names:  []string{"d", "docker"},
+			Target: &isDocker,
+		},
+
+		applause.Option{
+			Names:  []string{"h", "?", "help"},
+			Target: &help,
+		},
+
+		applause.Option{
+			Names:  []string{"n", "interval"},
+			Target: &c.interval,
+		},
+
+		applause.Option{
+			Names:  []string{"p", "port"},
+			Target: &port,
+		},
+
+		applause.Option{
+			Names:  []string{"q", "quiet"},
+			Target: &level,
+			Add:    +4,
+		},
+
+		applause.Option{
+			Names:  []string{"s", "short"},
+			Target: &c.short,
+		},
+
+		applause.Option{
+			Names:  []string{"t", "timeout"},
+			Target: &timeout,
+		},
+
+		applause.Option{
+			Names:  []string{"v", "verbose"},
+			Target: &level,
+			Add:    -4,
+		},
+	)
+
+	operands, err := parser.Parse(ctx, os.Args[1:])
+	if err != nil {
+		_, _ = os.Stderr.Write(usage)
+
+		return health.ExitUser
+	}
+
+	switch {
+	case help:
+		_, _ = os.Stdout.Write(usage)
+		return 0
+
+	case version:
+		fmt.Print(name)
+
+		if info, ok := debug.ReadBuildInfo(); ok {
+			fmt.Print(" ", info.Main.Version)
+
+			for _, bs := range info.Settings {
+				switch bs.Key {
+				case "vcs.revision", "vcs.time":
+					fmt.Print(" ", bs.Value)
+				}
+			}
+
+			fmt.Print(" ", info.GoVersion)
+		}
+
+		fmt.Println()
+
+		return 0
+	}
+
+	slog.SetDefault(slog.New(slug.NewHandler(
+		slug.HandlerOptions{
+			HandlerOptions: slog.HandlerOptions{
+				Level: level,
+			},
+		},
+		os.Stderr,
+	)))
+
+	switch len(operands) {
+	case 0:
+
+	case 1:
+		var host string
+
+		if isDocker {
+			if host, err = getContainerAddress(operands[0]); err != nil {
+				return health.ExitUser
+			}
+		} else {
+			host = operands[0]
+		}
+
+		c.options = append(c.options, health.WithHost(host))
+
+	default:
+		slog.ErrorContext(ctx, "too many operands")
+
+		return health.ExitUser
+	}
+
+	if port != 0 {
+		c.options = append(c.options, health.WithPort(port))
+	}
+
+	if timeout != 0 {
+		c.options = append(c.options, health.WithTimeout(timeout))
+	}
 
 	// Setting interval implies continuous
 	c.continuous = c.continuous || c.interval != 0
 	if c.continuous && c.interval == 0 {
-		c.interval = interval
-	}
-
-	var host string
-
-	if docker {
-		var err error
-		if host, err = getContainerAddress(flag.Arg(0)); err != nil {
-			log.Fatal(err)
-		}
-	} else {
-		host = flag.Arg(0)
-	}
-
-	c.config = client.Config{
-		Port:    port,
-		Host:    host,
-		Timeout: timeout,
+		c.interval = defaultInterval
 	}
 
 	c.isatty = term.IsTerminal(int(os.Stdout.Fd()))
-	c.print = c.makePrint()
+	c.printFunc = c.makePrint()
 
-	return c
-}
-
-func (c *cmd) exit() {
-	if c.continuous && c.isatty {
-		var str []string
-
-		for status, count := range c.stats {
-			str = append(str, map[string]func(interface{}) aurora.Value{
-				health.StatusPass.String(): aurora.Green,
-				health.StatusWarn.String(): aurora.Yellow,
-				health.StatusFail.String(): aurora.Red,
-				errorKey:                   aurora.BrightRed,
-			}[status](fmt.Sprintf("%d %s", count, status)).String())
-		}
-
-		fmt.Printf("\n---\n%s\n", strings.Join(str, ", "))
-	}
-
-	for status, count := range c.stats {
-		if status == health.StatusPass.String() {
-			continue
-		}
-
-		if count > 0 {
-			os.Exit(client.ErrExit)
-		}
-	}
-
-	os.Exit(0)
-}
-
-func (c *cmd) makePrint() func(*health.Response) {
-	switch {
-	case c.continuous && c.isatty && c.short:
-		return func(resp *health.Response) {
-			fmt.Printf("%s %s\r", time.Now().Format(time.RFC3339), resp.Status)
-		}
-
-	case c.short:
-		return func(resp *health.Response) {
-			fmt.Println(resp.Status)
-		}
-
-	case c.isatty:
-		return func(resp *health.Response) {
-			var buffer bytes.Buffer
-			_, _ = resp.Write(&buffer)
-			fmt.Println(string(pretty.Color(pretty.Pretty(buffer.Bytes()), nil)))
-		}
-
-	default:
-		return func(resp *health.Response) {
-			_, _ = resp.Write(os.Stdout)
-		}
-	}
-}
-
-func (c *cmd) run(ctx context.Context) {
-	c.stats = make(map[string]uint64)
-
-	go c.wait()
-
-	for !c.stop {
-		resp, err := client.CheckHealthContext(ctx, c.config)
-		if err == nil {
-			c.stats[resp.Status.String()]++
-			c.print(resp)
-		} else {
-			c.stats[errorKey]++
-			log.Println(err)
-		}
-
-		if !c.continuous {
-			c.exit()
-		}
-
-		time.Sleep(c.interval)
-	}
-}
-
-func (c *cmd) wait() {
-	channel := make(chan os.Signal, 1)
-
-	signal.Notify(channel, os.Interrupt)
-
-	<-channel
-
-	c.stop = true
-
-	c.exit()
+	return c.run(ctx)
 }
 
 func getContainerAddress(container string) (string, error) {
@@ -206,6 +203,11 @@ func getContainerAddress(container string) (string, error) {
 }
 
 func main() {
+	var exit int
+	defer func() {
+		os.Exit(exit)
+	}()
+
 	ctx, stop := signal.NotifyContext(
 		context.Background(),
 		os.Interrupt,
@@ -213,6 +215,97 @@ func main() {
 	)
 	defer stop()
 
-	c := newCmd()
-	c.run(ctx)
+	exit = Main(ctx)
+}
+
+type cmd struct {
+	continuous bool
+	interval   time.Duration
+	isatty     bool
+	options    []health.Option
+	printFunc  func(*health.Response)
+	short      bool
+	stats      map[string]uint64
+}
+
+func (c *cmd) makePrint() func(*health.Response) {
+	switch {
+	case c.continuous && c.isatty && c.short:
+		return func(resp *health.Response) {
+			fmt.Printf("%s %s\r", time.Now().Format(time.RFC3339), resp.Status)
+		}
+
+	case c.short:
+		return func(resp *health.Response) {
+			fmt.Println(resp.Status)
+		}
+
+	case c.isatty:
+		return func(resp *health.Response) {
+			var buffer bytes.Buffer
+			_, _ = resp.Write(&buffer)
+			fmt.Println(
+				string(pretty.Color(pretty.Pretty(buffer.Bytes()), nil)),
+			)
+		}
+
+	default:
+		return func(resp *health.Response) {
+			_, _ = resp.Write(os.Stdout)
+		}
+	}
+}
+
+func (c *cmd) run(ctx context.Context) int {
+	c.stats = make(map[string]uint64)
+
+	for {
+		resp, err := health.CheckHealth(ctx, c.options...)
+		if err == nil {
+			c.stats[resp.Status.String()]++
+			c.printFunc(resp)
+		} else {
+			c.stats[errorKey]++
+
+			slog.ErrorContext(ctx, "error",
+				slog.Any("error", err),
+			)
+		}
+
+		if !c.continuous {
+			for status, count := range c.stats {
+				if status == health.StatusPass.String() {
+					continue
+				}
+
+				if count > 0 {
+					return health.ExitErr
+				}
+			}
+
+			return 0
+		}
+
+		if c.isatty {
+			var str []string
+
+			for status, count := range c.stats {
+				str = append(str, map[string]func(interface{}) aurora.Value{
+					health.StatusPass.String(): aurora.Green,
+					health.StatusWarn.String(): aurora.Yellow,
+					health.StatusFail.String(): aurora.Red,
+					errorKey:                   aurora.BrightRed,
+				}[status](fmt.Sprintf("%d %s", count, status)).String())
+			}
+
+			fmt.Printf("\n---\n%s\n", strings.Join(str, ", "))
+		}
+
+		select {
+		case <-ctx.Done():
+			return 0
+
+		case <-time.After(c.interval):
+		}
+	}
 }
