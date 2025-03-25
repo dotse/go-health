@@ -99,6 +99,14 @@ var (
 	logSubsystem = slog.String("subsystem", "health")
 )
 
+// DeregisterAll removes all previously registered health checkers.
+func DeregisterAll() {
+	checkersMu.Lock()
+	defer checkersMu.Unlock()
+
+	checkers = nil
+}
+
 // Checker can be implemented by anything whose health can be checked.
 type Checker interface {
 	CheckHealth(ctx context.Context) (checks []Check)
