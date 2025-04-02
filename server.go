@@ -88,6 +88,7 @@ func HandleHTTP(w http.ResponseWriter, req *http.Request) {
 	resp, err := CheckNow(ctx)
 	if err != nil {
 		errorStatus(err, http.StatusInternalServerError)
+		return
 	}
 
 	if resp.Status == StatusFail {
