@@ -22,7 +22,7 @@ func CheckHealth(ctx context.Context, options ...Option) (*Response, error) {
 	defer span.End()
 
 	c := config{
-		Host:    "localhost",
+		Host:    "127.0.0.1",
 		Port:    port(),
 		Timeout: timeout,
 	}

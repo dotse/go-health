@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog], and this project adheres to [Semantic
 Versioning].
 
+## 1.0.1 - 2025-05-14
+
+### Changed
+
+-   Upgraded dependencies
+
+### Fixed
+
+-   Use IPv4 as the default server address in the client
+
+    I.e. don’t rely on `localhost` since it might resolve to IPv6 and the server
+    only listens on IPv4.
+
 ## 1.0.0 - 2025-04-23
 
 No changes; releasing as v1.0.0 and thus stabilising the API.
