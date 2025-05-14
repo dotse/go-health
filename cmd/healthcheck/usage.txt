@@ -44,7 +44,7 @@ OPTIONS
 OPERANDS
        ADDRESS
               The address to query for health check status. Default is
-              ‘localhost’.
+              ‘127.0.0.1’.
 
               Should be Docker container name if -d is used.
 
