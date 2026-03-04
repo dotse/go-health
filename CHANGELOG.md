@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog], and this project adheres to [Semantic
 Versioning].
 
+## 1.0.2 - 2026-03-04
+
+### Changed
+
+-   Upgraded Go version from v1.24 to v1.25
+-   Upgraded dependencies
+
 ## 1.0.1 - 2025-05-14
 
 ### Changed
