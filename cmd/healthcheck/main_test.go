@@ -6,8 +6,10 @@ import (
 	"io"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/dotse/go-health"
 	main "github.com/dotse/go-health/cmd/healthcheck"
@@ -41,6 +43,11 @@ func TestMain(t *testing.T) {
 				})
 				defer r.Deregister()
 				health.StartServer(ctx)
+
+				require.Eventually(t, func() bool {
+					_, err := health.CheckHealth(ctx)
+					return err == nil
+				}, 10*time.Second, 100*time.Millisecond, "server started")
 			}
 
 			var (
