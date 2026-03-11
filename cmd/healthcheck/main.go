@@ -290,7 +290,7 @@ func (c *cmd) run(ctx context.Context) int {
 			var str []string
 
 			for status, count := range c.stats {
-				str = append(str, map[string]func(interface{}) aurora.Value{
+				str = append(str, map[string]func(any) aurora.Value{
 					health.StatusPass.String(): aurora.Green,
 					health.StatusWarn.String(): aurora.Yellow,
 					health.StatusFail.String(): aurora.Red,

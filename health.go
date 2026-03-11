@@ -46,18 +46,15 @@ func CheckNow(ctx context.Context) (resp Response, err error) {
 			return resp, err
 
 		default:
-			wg.Add(1)
 
-			go func() {
-				defer wg.Done()
-
+			wg.Go(func() {
 				checks := checkOne(ctx, checker)
 
 				mu.Lock()
 				defer mu.Unlock()
 
 				resp.AddChecks(name, checks...)
-			}()
+			})
 		}
 	}
 
