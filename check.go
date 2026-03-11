@@ -6,15 +6,15 @@ import (
 
 // Check represent a single health check point.
 type Check struct {
-	ComponentID       string      `json:"componentId,omitempty"`
-	ComponentType     string      `json:"componentType,omitempty"`
-	ObservedValue     interface{} `json:"observedValue,omitempty"`
-	ObservedUnit      string      `json:"observedUnit,omitempty"`
-	Status            Status      `json:"status"`
-	AffectedEndpoints []string    `json:"affectedEndpoints,omitempty"`
-	Time              *time.Time  `json:"time,omitempty"`
-	Output            string      `json:"output,omitempty"`
-	Links             []string    `json:"links,omitempty"`
+	ComponentID       string     `json:"componentId,omitempty"`
+	ComponentType     string     `json:"componentType,omitempty"`
+	ObservedValue     any        `json:"observedValue,omitempty"`
+	ObservedUnit      string     `json:"observedUnit,omitempty"`
+	Status            Status     `json:"status"`
+	AffectedEndpoints []string   `json:"affectedEndpoints,omitempty"`
+	Time              *time.Time `json:"time,omitempty"`
+	Output            string     `json:"output,omitempty"`
+	Links             []string   `json:"links,omitempty"`
 }
 
 // Good returns true if the Check is good, i.e. its status is ‘pass’ or

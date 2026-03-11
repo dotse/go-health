@@ -21,7 +21,7 @@ func Example() {
 	// Register a function:
 	r := health.RegisterFunc(ctx, "func", func(context.Context) (checks []health.Check) {
 		// Checkers can return any number of checks.
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			var check health.Check
 			// Make the relevant changes to `check` here, most importantly
 			// `check.Status`.

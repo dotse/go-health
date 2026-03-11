@@ -30,8 +30,7 @@ func TestMain(t *testing.T) {
 		t.Run(fmt.Sprint(test.Args), func(t *testing.T) {
 			t.Helper()
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx := t.Context()
 
 			for k, v := range test.Env {
 				t.Setenv(k, v)
